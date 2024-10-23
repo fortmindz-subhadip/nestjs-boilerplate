@@ -3,7 +3,7 @@ import { User } from '../../users/domain/user';
 
 export class LoginResponseDto {
   @ApiProperty()
-  token: string;
+  accesstoken: string;
 
   @ApiProperty()
   refreshToken: string;

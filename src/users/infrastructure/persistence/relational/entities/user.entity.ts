@@ -16,12 +16,13 @@ import { FileEntity } from '../../../../../files/infrastructure/persistence/rela
 
 import { AuthProvidersEnum } from '../../../../../auth/auth-providers.enum';
 import { EntityRelationalHelper } from '../../../../../utils/relational-entity-helper';
+import { UserRole } from '../../../../../utils/enum/coustume.enum';
 
 @Entity({
   name: 'user',
 })
 export class UserEntity extends EntityRelationalHelper {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn('uuid')
   id: number;
 
   // For "string | null" we need to use String type.
@@ -47,21 +48,11 @@ export class UserEntity extends EntityRelationalHelper {
   @Column({ type: String, nullable: true })
   lastName: string | null;
 
-  @OneToOne(() => FileEntity, {
-    eager: true,
-  })
-  @JoinColumn()
-  photo?: FileEntity | null;
+  @Index()
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+  roles: UserRole;
 
-  @ManyToOne(() => RoleEntity, {
-    eager: true,
-  })
-  role?: RoleEntity | null;
 
-  @ManyToOne(() => StatusEntity, {
-    eager: true,
-  })
-  status?: StatusEntity;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -71,4 +62,6 @@ export class UserEntity extends EntityRelationalHelper {
 
   @DeleteDateColumn()
   deletedAt: Date;
+  role: any;
+  status: any;
 }

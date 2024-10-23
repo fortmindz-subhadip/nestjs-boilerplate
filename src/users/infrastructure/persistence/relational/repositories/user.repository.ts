@@ -36,9 +36,9 @@ export class UsersRelationalRepository implements UserRepository {
   }): Promise<User[]> {
     const where: FindOptionsWhere<UserEntity> = {};
     if (filterOptions?.roles?.length) {
-      where.role = filterOptions.roles.map((role) => ({
-        id: Number(role.id),
-      }));
+      // where.role = filterOptions.roles.map((role) => ({
+      //   id: Number(role.id),
+      // }));
     }
 
     const entities = await this.usersRepository.find({

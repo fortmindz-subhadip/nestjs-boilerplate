@@ -26,29 +26,23 @@ import { User } from '../users/domain/user';
 import { RefreshResponseDto } from './dto/refresh-response.dto';
 
 @ApiTags('Auth')
-@Controller({
-  path: 'auth',
-  version: '1',
-})
+@Controller('auth')
 export class AuthController {
   constructor(private readonly service: AuthService) {}
-
-  @SerializeOptions({
-    groups: ['me'],
-  })
   @Post('email/login')
-  @ApiOkResponse({
+  @ApiOkResponse({  
     type: LoginResponseDto,
   })
   @HttpCode(HttpStatus.OK)
-  public login(@Body() loginDto: AuthEmailLoginDto): Promise<LoginResponseDto> {
-    return this.service.validateLogin(loginDto);
+  async login(@Body() loginDto: AuthEmailLoginDto) {
+    return  await this.service.validateLogin(loginDto);
   }
 
   @Post('email/register')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async register(@Body() createUserDto: AuthRegisterLoginDto): Promise<void> {
-    return this.service.register(createUserDto);
+  @HttpCode(HttpStatus.CREATED)
+  async register(@Body() createUserDto: AuthRegisterLoginDto) {
+    const user=await this.service.register(createUserDto);
+    return user
   }
 
   @Post('email/confirm')

@@ -8,6 +8,10 @@ import { RelationalUserPersistenceModule } from './infrastructure/persistence/re
 import { DatabaseConfig } from '../database/config/database-config.type';
 import databaseConfig from '../database/config/database.config';
 import { FilesModule } from '../files/files.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { UserEntity } from './infrastructure/persistence/relational/entities/user.entity';
+import { JwtModule } from '@nestjs/jwt';
+;
 
 // <database-block>
 const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
@@ -18,9 +22,10 @@ const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([UserEntity]),
     // import modules, etc.
     infrastructurePersistenceModule,
-    FilesModule,
+    FilesModule,JwtModule
   ],
   controllers: [UsersController],
   providers: [UsersService],

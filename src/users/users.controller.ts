@@ -35,15 +35,16 @@ import { User } from './domain/user';
 import { UsersService } from './users.service';
 import { RolesGuard } from '../roles/roles.guard';
 import { infinityPagination } from '../utils/infinity-pagination';
+import { ParamIdMatchesUserGuard } from '../auth/guards/coustome.guards';
+import { UserEntity } from './infrastructure/persistence/relational/entities/user.entity';
+import { CurrentUserGuard } from '../auth/guards/current-user-gaurds';
+import { CurrentUser } from '../auth/decorators/currentuser-decorator';
+import { PermissionGuard } from '../auth/guards/permission.gaurds';
+import { RequiresPermissions } from '../auth/decorators/permission.decorator';
 
 @ApiBearerAuth()
-@Roles(RoleEnum.admin)
-@UseGuards(AuthGuard('jwt'), RolesGuard)
 @ApiTags('Users')
-@Controller({
-  path: 'users',
-  version: '1',
-})
+@Controller('user')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -55,7 +56,7 @@ export class UsersController {
   })
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createProfileDto: CreateUserDto): Promise<User> {
+  create(@Body() createProfileDto: CreateUserDto){
     return this.usersService.create(createProfileDto);
   }
 
@@ -69,32 +70,24 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   async findAll(
     @Query() query: QueryUserDto,
-  ): Promise<InfinityPaginationResponseDto<User>> {
+  ){
     const page = query?.page ?? 1;
     let limit = query?.limit ?? 10;
     if (limit > 50) {
       limit = 50;
     }
 
-    return infinityPagination(
-      await this.usersService.findManyWithPagination({
-        filterOptions: query?.filters,
-        sortOptions: query?.sort,
-        paginationOptions: {
-          page,
-          limit,
-        },
-      }),
-      { page, limit },
-    );
+   
   }
 
+
+  //get user details by id 
   @ApiOkResponse({
     type: User,
   })
-  @SerializeOptions({
-    groups: ['admin'],
-  })
+  @UseGuards(AuthGuard('jwt'),ParamIdMatchesUserGuard,CurrentUserGuard,PermissionGuard)
+  @RequiresPermissions('readOwnProfile') // Define the required permission
+
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   @ApiParam({
@@ -102,8 +95,11 @@ export class UsersController {
     type: String,
     required: true,
   })
-  findOne(@Param('id') id: User['id']): Promise<NullableType<User>> {
-    return this.usersService.findById(id);
+
+ async findOne( @CurrentUser() user: UserEntity, @Param('id') id: string): Promise<any> {
+  console.log(user);
+  
+    return await this.usersService.findById(id);
   }
 
   @ApiOkResponse({
@@ -122,8 +118,8 @@ export class UsersController {
   update(
     @Param('id') id: User['id'],
     @Body() updateProfileDto: UpdateUserDto,
-  ): Promise<User | null> {
-    return this.usersService.update(id, updateProfileDto);
+  ) {
+    return   this.usersService.update(id, updateProfileDto);
   }
 
   @Delete(':id')

@@ -28,6 +28,7 @@ import { Session } from '../session/domain/session';
 import { SessionService } from '../session/session.service';
 import { StatusEnum } from '../statuses/statuses.enum';
 import { User } from '../users/domain/user';
+import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -40,8 +41,9 @@ export class AuthService {
   ) {}
 
   async validateLogin(loginDto: AuthEmailLoginDto): Promise<LoginResponseDto> {
-    const user = await this.usersService.findByEmail(loginDto.email);
-
+    const user = await this.usersService.findByEmail(loginDto.email)
+    console.log(user);
+    ;
     if (!user) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -88,21 +90,24 @@ export class AuthService {
       .update(randomStringGenerator())
       .digest('hex');
 
-    const session = await this.sessionService.create({
-      user,
+    // const session = await this.sessionService.create({
+    //   user,
+    //   hash,
+    // });
+    // console.log("ewer",session);
+    
+console.log(300);
+
+    const { accesstoken, refreshToken, tokenExpires } = await this.getTokensData({
+      id: user.id,
+      role: user?.role,
       hash,
     });
 
-    const { token, refreshToken, tokenExpires } = await this.getTokensData({
-      id: user.id,
-      role: user.role,
-      sessionId: session.id,
-      hash,
-    });
 
     return {
       refreshToken,
-      token,
+      accesstoken,
       tokenExpires,
       user,
     };
@@ -121,17 +126,17 @@ export class AuthService {
     }
 
     if (socialData.id) {
-      user = await this.usersService.findBySocialIdAndProvider({
-        socialId: socialData.id,
-        provider: authProvider,
-      });
+      // user = await this.usersService.findBySocialIdAndProvider({
+      //   socialId: socialData.id,
+      //   provider: authProvider,
+      // });
     }
 
     if (user) {
       if (socialEmail && !userByEmail) {
-        user.email = socialEmail;
+        // user.email = socialEmail;
       }
-      await this.usersService.update(user.id, user);
+      // await this.usersService.update(user.id, user);
     } else if (userByEmail) {
       user = userByEmail;
     } else if (socialData.id) {
@@ -142,17 +147,17 @@ export class AuthService {
         id: StatusEnum.active,
       };
 
-      user = await this.usersService.create({
-        email: socialEmail ?? null,
-        firstName: socialData.firstName ?? null,
-        lastName: socialData.lastName ?? null,
-        socialId: socialData.id,
-        provider: authProvider,
-        role,
-        status,
-      });
+      // user = await this.usersService.create({
+      //   email: socialEmail ?? null,
+      //   firstName: socialData.firstName ?? null,
+      //   lastName: socialData.lastName ?? null,
+      //   socialId: socialData.id,
+      //   provider: authProvider,
+      //   role,
+      //   status,
+      // });
 
-      user = await this.usersService.findById(user.id);
+//user = await this.usersService.findById(user.id);
     }
 
     if (!user) {
@@ -175,28 +180,27 @@ export class AuthService {
     });
 
     const {
-      token: jwtToken,
+      accesstoken: jwtToken,
       refreshToken,
       tokenExpires,
     } = await this.getTokensData({
       id: user.id,
       role: user.role,
-      sessionId: session.id,
       hash,
     });
 
     return {
       refreshToken,
-      token: jwtToken,
+      accesstoken: jwtToken,
       tokenExpires,
       user,
     };
   }
 
-  async register(dto: AuthRegisterLoginDto): Promise<void> {
+  async register(dto: AuthRegisterLoginDto) {
+    // Create a new user with the appropriate role and status
     const user = await this.usersService.create({
       ...dto,
-      email: dto.email,
       role: {
         id: RoleEnum.user,
       },
@@ -204,7 +208,10 @@ export class AuthService {
         id: StatusEnum.inactive,
       },
     });
-
+  
+    console.log(user); // Log the created user (for debugging)
+  
+    // Uncomment this section if you want to generate and send a confirmation token
     const hash = await this.jwtService.signAsync(
       {
         confirmEmailUserId: user.id,
@@ -218,16 +225,15 @@ export class AuthService {
         }),
       },
     );
-
-    await this.mailService.userSignUp({
-      to: dto.email,
-      data: {
-        hash,
-      },
-    });
+  
+    // You can send the token to the user via email or another method here
+    // await this.someEmailService.sendConfirmationEmail(user, hash);
+  
+    return user; // Return the created user
   }
+  
 
-  async confirmEmail(hash: string): Promise<void> {
+  async confirmEmail(hash: string) {
     let userId: User['id'];
 
     try {
@@ -512,25 +518,24 @@ export class AuthService {
 
     const user = await this.usersService.findById(session.user.id);
 
-    if (!user?.role) {
-      throw new UnauthorizedException();
-    }
+    // if (!user?.role) {
+    //   throw new UnauthorizedException();
+    // }
 
     await this.sessionService.update(session.id, {
       hash,
     });
 
-    const { token, refreshToken, tokenExpires } = await this.getTokensData({
+    const { accesstoken, refreshToken, tokenExpires } = await this.getTokensData({
       id: session.user.id,
       role: {
-        id: user.role.id,
+        id: user?.role?.id,
       },
-      sessionId: session.id,
       hash,
     });
 
     return {
-      token,
+      accesstoken,
       refreshToken,
       tokenExpires,
     };
@@ -544,24 +549,18 @@ export class AuthService {
     return this.sessionService.deleteById(data.sessionId);
   }
 
-  private async getTokensData(data: {
-    id: User['id'];
-    role: User['role'];
-    sessionId: Session['id'];
-    hash: Session['hash'];
-  }) {
+  private async getTokensData(data:any) {
     const tokenExpiresIn = this.configService.getOrThrow('auth.expires', {
       infer: true,
     });
 
     const tokenExpires = Date.now() + ms(tokenExpiresIn);
 
-    const [token, refreshToken] = await Promise.all([
+    const [accesstoken, refreshToken] = await Promise.all([
       await this.jwtService.signAsync(
         {
           id: data.id,
           role: data.role,
-          sessionId: data.sessionId,
         },
         {
           secret: this.configService.getOrThrow('auth.secret', { infer: true }),
@@ -570,7 +569,6 @@ export class AuthService {
       ),
       await this.jwtService.signAsync(
         {
-          sessionId: data.sessionId,
           hash: data.hash,
         },
         {
@@ -585,7 +583,7 @@ export class AuthService {
     ]);
 
     return {
-      token,
+      accesstoken,
       refreshToken,
       tokenExpires,
     };
