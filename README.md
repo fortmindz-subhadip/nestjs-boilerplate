@@ -28,7 +28,6 @@ Belongs to the [bc boilerplates](https://bcboilerplates.com/) ecosystem
 ## Table of Contents <!-- omit in toc -->
 
 - [Features](#features)
-- [Contributors](#contributors)
 - [Support](#support)
 
 ## Features
